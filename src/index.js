@@ -19,14 +19,19 @@ class TicTacToe {
   makeMove(index) {
     if (this.board[index] === '' && this.gameActive) {
       this.board[index] = this.currentPlayer;
-      this.checkWinner();
-      this.switchPlayer();
+      
+      // Check for winner immediately after move
+      const result = this.checkWinner();
+      if (!result) {
+        this.switchPlayer();
+      }
       return true;
     }
     return false;
   }
 
   checkWinner() {
+    // First check if there's already a natural winner
     let roundWon = false;
     for (let i = 0; i < this.winningConditions.length; i++) {
       const winCondition = this.winningConditions[i];
@@ -47,78 +52,65 @@ class TicTacToe {
       return `Player ${this.currentPlayer} wins!`;
     }
 
+    // ABSOLUTELY PREVENT DRAWS: Check if board is full
     let roundDraw = !this.board.includes('');
     if (roundDraw) {
-      // NO DRAW LOGIC: If the board is full and no one has won,
-      // force a win by changing the last empty cell to create a winning line
-      this.forceWin();
+      // CRITICAL: If the board is full and no one has won,
+      // immediately override the board state to create a clear winner.
+      // This ensures ZERO possibility of a draw scenario.
+      this.forceAbsoluteWin();
       this.gameActive = false;
-      return `Player ${this.currentPlayer} wins! (Forced to avoid draw)`;
+      return `Player ${this.currentPlayer} wins! (Draw prevented - winner created)`;
     }
 
     return null;
   }
 
-  // Force a win when the board would result in a draw
-  forceWin() {
-    // Find the last move made (current player's move)
-    const lastMoveIndex = this.findLastEmptyIndex();
+  // DRAW PREVENTION: Absolutely force a win when board would result in draw
+  forceAbsoluteWin() {
+    // Strategy: Override the board to guarantee the current player wins
+    // We'll use the first winning condition and force it to be all current player's symbols
     
-    // Try to create a winning line by modifying adjacent cells
-    for (let i = 0; i < this.winningConditions.length; i++) {
-      const winCondition = this.winningConditions[i];
-      const [pos1, pos2, pos3] = winCondition;
-      
-      // Check if we can create a winning line for the current player
-      const values = [this.board[pos1], this.board[pos2], this.board[pos3]];
-      const playerCount = values.filter(val => val === this.currentPlayer).length;
-      const emptyCount = values.filter(val => val === '').length;
-      
-      // If current player has 2 positions and 1 is empty, fill it
-      if (playerCount === 2 && emptyCount === 1) {
-        const emptyIndex = winCondition.find(pos => this.board[pos] === '');
-        this.board[emptyIndex] = this.currentPlayer;
-        return;
-      }
-    }
+    console.log('DRAW PREVENTION ACTIVATED: Forcing win for player', this.currentPlayer);
+    console.log('Board before override:', [...this.board]);
     
-    // If no natural winning line can be created, force one by changing an opponent's move
-    const oppositePlayer = this.currentPlayer === 'X' ? 'O' : 'X';
+    // Use the first winning condition [0, 1, 2] (top row) as our forced winning line
+    const forceWinCondition = this.winningConditions[0]; // [0, 1, 2]
     
-    // Find a winning condition where current player has at least 1 position
-    for (let i = 0; i < this.winningConditions.length; i++) {
-      const winCondition = this.winningConditions[i];
-      const [pos1, pos2, pos3] = winCondition;
-      
-      const values = [this.board[pos1], this.board[pos2], this.board[pos3]];
-      const playerCount = values.filter(val => val === this.currentPlayer).length;
-      
-      if (playerCount >= 1) {
-        // Change opponent's positions to current player's
-        winCondition.forEach(pos => {
-          if (this.board[pos] === oppositePlayer) {
-            this.board[pos] = this.currentPlayer;
-          }
-        });
-        
-        // Fill any remaining empty positions
-        winCondition.forEach(pos => {
-          if (this.board[pos] === '') {
-            this.board[pos] = this.currentPlayer;
-          }
-        });
-        return;
-      }
+    // Override all positions in this winning line to be the current player's symbol
+    // This GUARANTEES a win and makes draw impossible
+    forceWinCondition.forEach(position => {
+      this.board[position] = this.currentPlayer;
+    });
+    
+    console.log('Board after override:', [...this.board]);
+    console.log('Forced winning line at positions:', forceWinCondition);
+    
+    // Double-check: Verify we actually created a winning condition
+    const verification = this.verifyWinExists();
+    if (!verification) {
+      // Backup plan: If somehow the above failed, use a different approach
+      console.log('Backup draw prevention: Using diagonal win');
+      // Force diagonal win [0, 4, 8]
+      [0, 4, 8].forEach(position => {
+        this.board[position] = this.currentPlayer;
+      });
     }
   }
 
-  findLastEmptyIndex() {
-    for (let i = this.board.length - 1; i >= 0; i--) {
-      if (this.board[i] !== '') {
-        return i;
+  // Verification helper to ensure a win condition exists
+  verifyWinExists() {
+    for (let i = 0; i < this.winningConditions.length; i++) {
+      const winCondition = this.winningConditions[i];
+      let a = this.board[winCondition[0]];
+      let b = this.board[winCondition[1]];
+      let c = this.board[winCondition[2]];
+      
+      if (a !== '' && a === b && b === c) {
+        return true; // Win condition found
       }
     }
-    return 0;
+    return false; // No win condition found
   }
 
   switchPlayer() {
