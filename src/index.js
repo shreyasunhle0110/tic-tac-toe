@@ -1,5 +1,4 @@
 // Tic Tac Toe Game Logic
-
 class TicTacToe {
   constructor() {
     this.board = Array(9).fill('');
@@ -50,11 +49,76 @@ class TicTacToe {
 
     let roundDraw = !this.board.includes('');
     if (roundDraw) {
+      // NO DRAW LOGIC: If the board is full and no one has won,
+      // force a win by changing the last empty cell to create a winning line
+      this.forceWin();
       this.gameActive = false;
-      return 'Game is a draw!';
+      return `Player ${this.currentPlayer} wins! (Forced to avoid draw)`;
     }
 
     return null;
+  }
+
+  // Force a win when the board would result in a draw
+  forceWin() {
+    // Find the last move made (current player's move)
+    const lastMoveIndex = this.findLastEmptyIndex();
+    
+    // Try to create a winning line by modifying adjacent cells
+    for (let i = 0; i < this.winningConditions.length; i++) {
+      const winCondition = this.winningConditions[i];
+      const [pos1, pos2, pos3] = winCondition;
+      
+      // Check if we can create a winning line for the current player
+      const values = [this.board[pos1], this.board[pos2], this.board[pos3]];
+      const playerCount = values.filter(val => val === this.currentPlayer).length;
+      const emptyCount = values.filter(val => val === '').length;
+      
+      // If current player has 2 positions and 1 is empty, fill it
+      if (playerCount === 2 && emptyCount === 1) {
+        const emptyIndex = winCondition.find(pos => this.board[pos] === '');
+        this.board[emptyIndex] = this.currentPlayer;
+        return;
+      }
+    }
+    
+    // If no natural winning line can be created, force one by changing an opponent's move
+    const oppositePlayer = this.currentPlayer === 'X' ? 'O' : 'X';
+    
+    // Find a winning condition where current player has at least 1 position
+    for (let i = 0; i < this.winningConditions.length; i++) {
+      const winCondition = this.winningConditions[i];
+      const [pos1, pos2, pos3] = winCondition;
+      
+      const values = [this.board[pos1], this.board[pos2], this.board[pos3]];
+      const playerCount = values.filter(val => val === this.currentPlayer).length;
+      
+      if (playerCount >= 1) {
+        // Change opponent's positions to current player's
+        winCondition.forEach(pos => {
+          if (this.board[pos] === oppositePlayer) {
+            this.board[pos] = this.currentPlayer;
+          }
+        });
+        
+        // Fill any remaining empty positions
+        winCondition.forEach(pos => {
+          if (this.board[pos] === '') {
+            this.board[pos] = this.currentPlayer;
+          }
+        });
+        return;
+      }
+    }
+  }
+
+  findLastEmptyIndex() {
+    for (let i = this.board.length - 1; i >= 0; i--) {
+      if (this.board[i] !== '') {
+        return i;
+      }
+    }
+    return 0;
   }
 
   switchPlayer() {
